@@ -1,121 +1,180 @@
 from flask import Flask, render_template, request
 import spacy
-import re
-import joblib
-from init_db import init_db, insert_processed_text, insert_entity, insert_claim
-
+import torch
+import requests
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import nltk
+from nltk.tokenize import sent_tokenize
+import os
 
 # -------------------------
-# Create Flask App FIRST
+# INITIAL SETUP
 # -------------------------
+
 app = Flask(__name__)
 
+# Download NLTK data (first time only)
+nltk.download("punkt")
 
-# -------------------------
-# Load Models
-# -------------------------
+# Load spaCy model
 nlp = spacy.load("en_core_web_sm")
-model, vectorizer = joblib.load("model/model.pkl")
-
 
 # -------------------------
-# Initialize Database
+# LOAD TRAINED RoBERTa MODEL
 # -------------------------
-init_db()
 
+MODEL_NAME = "hamzab/roberta-fake-news-classification"
 
-# -------------------------
-# Text Cleaning Function
-# -------------------------
-def clean_text(text):
-    text = text.lower()
-    text = re.sub(r'[^a-z\s]', '', text)
-    return text.strip()
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
 
+model.eval()
+
+print("Model Loaded:", model.config._name_or_path)
 
 # -------------------------
-# Simple Verification Logic
+# GOOGLE FACT CHECK API KEY
 # -------------------------
-def verify_claim(claim):
-    suspicious_words = ["100%", "always", "never", "guaranteed"]
 
-    for word in suspicious_words:
-        if word.lower() in claim.lower():
-            return "Suspicious"
+API_KEY = os.environ.get("FACT_CHECK_API_KEY")
 
-    return "Needs Verification"
-
+if not API_KEY:
+    print("⚠ WARNING: Google Fact Check API key not set!")
 
 # -------------------------
-# Main Route
+# CLASSIFICATION FUNCTION
 # -------------------------
+
+def classify_text(text):
+    inputs = tokenizer(
+        text,
+        return_tensors="pt",
+        truncation=True,
+        padding=True,
+        max_length=256
+    )
+
+    with torch.no_grad():
+        outputs = model(**inputs)
+
+    probs = torch.nn.functional.softmax(outputs.logits, dim=1)
+
+    confidence = torch.max(probs).item()
+    label_id = torch.argmax(probs).item()
+
+    label = model.config.id2label[label_id]
+
+    return label, round(confidence * 100, 2)
+
+# -------------------------
+# CLAIM EXTRACTION
+# -------------------------
+
+def extract_claims(text):
+    sentences = sent_tokenize(text)
+    claims = []
+
+    for sentence in sentences:
+        if len(sentence.split()) > 6:  # slightly stricter
+            claims.append(sentence)
+
+    return claims
+
+# -------------------------
+# GOOGLE FACT CHECK API
+# -------------------------
+
+def fact_check_api(claim):
+    if not API_KEY:
+        return []
+
+    url = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
+
+    # 🔥 Shorten query for better match
+    short_claim = claim[:120]
+
+    params = {
+        "query": short_claim,
+        "key": API_KEY,
+        "languageCode": "en",
+        "pageSize": 5
+    }
+
+    try:
+        response = requests.get(url, params=params)
+
+        if response.status_code != 200:
+            print("API Status Error:", response.status_code)
+            print(response.text)
+            return []
+
+        data = response.json()
+        print("Fact Check API Response:", data)
+
+        results = []
+
+        if "claims" in data and len(data["claims"]) > 0:
+            for item in data["claims"]:
+                for review in item.get("claimReview", []):
+                    results.append({
+                        "publisher": review.get("publisher", {}).get("name", "Unknown"),
+                        "rating": review.get("textualRating", "No rating"),
+                        "url": review.get("url", "#")
+                    })
+
+        return results
+
+    except Exception as e:
+        print("API Exception:", e)
+        return []
+
+# -------------------------
+# ROUTES
+# -------------------------
+
 @app.route("/", methods=["GET", "POST"])
 def index():
-
-    # Define variables BEFORE POST
     prediction = None
     confidence = None
-    claims = []
+    claims_data = []
     entities = []
-    cleaned_text = ""
-    text = ""   # VERY IMPORTANT (prevents UnboundLocalError)
+    original_text = None
 
     if request.method == "POST":
-        text = request.form.get("text")
+        text = request.form.get("news_text")
+        original_text = text
 
         if text and text.strip():
 
-            # spaCy Processing
+            # 1️⃣ RoBERTa Classification
+            prediction, confidence = classify_text(text)
+
+            # 2️⃣ Named Entity Recognition
             doc = nlp(text)
-
-            # Clean text
-            cleaned_text = clean_text(text)
-
-            # Vectorize
-            vectorized_text = vectorizer.transform([text])
-
-            # Predict
-            pred = model.predict(vectorized_text)[0]
-            prob = model.predict_proba(vectorized_text).max()
-
-            prediction = "REAL" if pred == 1 else "FAKE"
-            confidence = round(prob * 100, 2)
-
-            # Extract Entities
             entities = [(ent.text, ent.label_) for ent in doc.ents]
 
-            # Extract Claims
-            raw_claims = [sent.text for sent in doc.sents]
+            # 3️⃣ Claim Extraction
+            claims = extract_claims(text)
 
-            # Save to DB
-            text_id = insert_processed_text(
-                text,
-                cleaned_text,
-                prediction,
-                confidence
-            )
+            # 4️⃣ Google Fact Check Verification
+            for claim in claims:
+                verification = fact_check_api(claim)
 
-            for ent_text, ent_label in entities:
-                insert_entity(text_id, ent_text, ent_label)
-
-            claims = []
-            for claim in raw_claims:
-                verification = verify_claim(claim)
-                insert_claim(text_id, claim, verification)
-                claims.append((claim, verification))
+                claims_data.append({
+                    "claim": claim,
+                    "verification": verification
+                })
 
     return render_template(
         "index.html",
         prediction=prediction,
         confidence=confidence,
-        claims=claims,
+        claims_data=claims_data,
         entities=entities,
-        original_text=text
+        original_text=original_text
     )
 
+# -------------------------
 
-# -------------------------
-# Run App
-# -------------------------
 if __name__ == "__main__":
     app.run(debug=True)
