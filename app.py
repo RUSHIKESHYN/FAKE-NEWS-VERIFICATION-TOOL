@@ -9,14 +9,20 @@ import os
 import time
 import re
 import wikipediaapi
+import urllib.parse  
 
-# Download NLTK data for sentence splitting
-nltk.download('punkt')
+# Ensure NLTK is ready
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
 
 app = Flask(__name__)
 
-# Wikipedia API Setup (User-Agent is required)
-wiki = wikipediaapi.Wikipedia(user_agent="FakeNewsVerificationBot/1.0", language='en')
+# --- API CONFIGURATION ---
+# Replace with your actual Google Cloud API Key
+GOOGLE_API_KEY = "AIzaSyDwgIr_e5Qqz2eekzmOCmLrVaEQejMUoVQ"
+wiki = wikipediaapi.Wikipedia(user_agent="FactChecker/1.0", language='en')
 
 # --- SYSTEM METRICS ---
 articles_analyzed = 0
@@ -25,12 +31,12 @@ real_count = 0
 start_time = time.time()
 
 suspicious_patterns = {
-    "miracle cure": "Claims of 'miracle cure' are often used in medical misinformation.",
-    "eliminates all types of cancer": "Biological impossibility; cancer is a group of diseases.",
+    "miracle cure": "Claims of 'miracle cure' are often used in medical misinformation to bypass scientific rigor.",
+    "eliminates all types of cancer": "Biological impossibility; cancer is a group of diseases, and no single cure exists for all.",
     "suppressed by big pharma": "Classic conspiracy narrative used to explain lack of evidence.",
     "secret government": "Vague references to 'secret' authorities are red flags.",
     "microchip": "Commonly linked to debunked vaccine-related conspiracy theories.",
-    "shocking discovery": "Clickbait language designed to trigger emotional responses."
+    "shocking discovery": "Sensationalist language used to trigger emotional responses."
 }
 
 def detect_suspicious(text):
@@ -39,24 +45,42 @@ def detect_suspicious(text):
     for phrase, explanation in suspicious_patterns.items():
         if phrase.lower() in text.lower():
             pattern = re.compile(re.escape(phrase), re.IGNORECASE)
-            # Use 'suspicious' class to match your CSS animation
             highlighted = pattern.sub(f'<span class="suspicious">{phrase}</span>', highlighted)
             if explanation not in explanations:
                 explanations.append(explanation)
     return highlighted, explanations
 
+def get_google_fact_check(claim):
+    """Queries Google Fact Check Tools API with Wikipedia fallback"""
+    try:
+        query = urllib.parse.quote(claim)
+        url = f"https://factchecktools.googleapis.com/v1alpha1/claims:search?query={query}&key={AIzaSyDwgIr_e5Qqz2eekzmOCmLrVaEQejMUoVQ}"
+        response = requests.get(url)
+        data = response.json()
+
+        if "claims" in data:
+            first_claim = data["claims"][0]
+            review = first_claim["claimReview"][0]
+            publisher = review["publisher"]["name"]
+            rating = review["textualRating"]
+            return f"Google Check: {rating} (via {publisher})"
+        
+        # Fallback to Wikipedia if Google has no results
+        return get_wiki_verification(claim)
+    except:
+        return get_wiki_verification(claim)
+
 def get_wiki_verification(claim):
     try:
-        # Search for the first 3-4 words of the claim for better matching
-        search_query = " ".join(claim.split()[:5])
-        page = wiki.page(search_query)
+        query = " ".join(claim.split()[:4])
+        page = wiki.page(query)
         if page.exists():
             return f"Wikipedia: {page.title} (Verified Source)"
         return "No specific match found in archives."
     except:
-        return "Verification service temporarily unavailable."
+        return "Verification service unavailable."
 
-# NLP / Model Setup
+# Model Setup
 try:
     nlp = spacy.load("en_core_web_sm")
 except:
@@ -75,50 +99,37 @@ def classify_text(text):
     confidence = torch.max(probs).item()
     idx = torch.argmax(probs).item()
     label = model.config.id2label[idx].upper() 
-    if "0" in label or "FAKE" in label:
-        label = "FAKE"
-    else:
-        label = "REAL"
+    label = "FAKE" if ("0" in label or "FAKE" in label) else "REAL"
     return label, round(confidence * 100, 2)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     global articles_analyzed, fake_count, real_count
-    
-    data = {
-        "prediction": None, "confidence": None, "claims_data": [], 
-        "entities": [], "highlighted_text": None, "explanation_points": [], 
-        "original_text": None
-    }
+    data = {"prediction": None, "confidence": None, "claims_data": [], "entities": [], "highlighted_text": None, "explanation_points": [], "original_text": None}
 
     if request.method == "POST":
         text = request.form.get("news_text")
         if text and text.strip():
             data["original_text"] = text
             data["prediction"], data["confidence"] = classify_text(text)
-            
             articles_analyzed += 1
             if data["prediction"] == "FAKE": fake_count += 1
             else: real_count += 1
-                
             data["highlighted_text"], data["explanation_points"] = detect_suspicious(text)
             
-            # --- POPULATE CLAIMS DATA ---
+        
             sentences = sent_tokenize(text)
-            for sent in sentences[:4]: # Limit to 4 for UI cleanliness
+            for sent in sentences[:4]:
                 data["claims_data"].append({
                     "claim": sent,
-                    "source": get_wiki_verification(sent)
+                    "source": get_google_fact_check(sent)
                 })
 
             doc = nlp(text)
             data["entities"] = [(ent.text, ent.label_) for ent in doc.ents]
 
-    uptime = int(time.time() - start_time)
-    metrics_summary = {"analyzed": articles_analyzed, "distribution": f"F:{fake_count} | R:{real_count}", "session": f"{uptime}s"}
-    deployment_info = {"status": "Active (Local)", "provider": "Flask Dev Server"}
-
-    return render_template("index.html", **data, metrics=metrics_summary, deployment=deployment_info)
+    metrics_summary = {"analyzed": articles_analyzed, "distribution": f"F:{fake_count} | R:{real_count}", "session": f"{int(time.time() - start_time)}s"}
+    return render_template("index.html", **data, metrics=metrics_summary, deployment={"status": "Active (Local)", "provider": "Flask Dev Server"})
 
 if __name__ == "__main__":
     app.run(debug=True)

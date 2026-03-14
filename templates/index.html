@@ -38,12 +38,12 @@
 
     {% if explanation_points %}
     <div class="explain-box" style="border-left: 5px solid #ff4b81; background: rgba(255, 75, 129, 0.05); padding: 25px; margin: 30px 0;">
-        <h3 style="color: #ff4b81; font-size: 1.3rem; margin-bottom: 20px; border: none; padding: 0;">
+        <h3 style="color: #ff4b81; font-size: 1.3rem; margin-bottom: 20px; border: none; padding: 0; display: flex; align-items: center; gap: 10px;">
             <i class="fas fa-exclamation-triangle"></i> Why this article is flagged
         </h3>
         <ul style="list-style: none; padding: 0;">
             {% for point in explanation_points %}
-                <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px; color: #fff;">
+                <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px; color: #fff; line-height: 1.4;">
                     <i class="fas fa-exclamation-triangle" style="color: #ffb44b; margin-top: 4px; font-size: 0.9rem;"></i>
                     <span>{{ point }}</span>
                 </li>
@@ -59,27 +59,34 @@
     <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 30px;">
         <div style="display: grid; grid-template-columns: 1.5fr 1fr; padding: 15px; border-bottom: 2px solid #ff4f85; font-weight: bold; color: #ff7aa2; background: rgba(0,0,0,0.2); font-size: 0.85rem; text-transform: uppercase;">
             <span>Extracted Claim</span>
-            <span>Verified Sources (Wikipedia/Google)</span>
+            <span>Verified Sources (Google / Wikipedia)</span>
         </div>
-        {% for item in claims_data %}
-        <div class="verification-item" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 0;">
-            <span style="font-size: 0.95rem;">{{ item.claim }}</span>
-            <span class="status-unverified" style="font-size: 0.8rem; text-align: center;">{{ item.source }}</span>
-        </div>
-        {% endfor %}
+        {% if claims_data %}
+            {% for item in claims_data %}
+            <div class="verification-item" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 0; padding: 15px; align-items: center;">
+                <span style="font-size: 0.95rem; line-height: 1.4;">{{ item.claim }}</span>
+                <span class="status-unverified" style="font-size: 0.8rem; text-align: center; border-radius: 12px; padding: 5px 10px; display: inline-flex; align-items: center; gap: 5px; background: {% if 'Google' in item.source %}rgba(66, 133, 244, 0.2){% else %}rgba(255, 209, 102, 0.1){% endif %}; color: {% if 'Google' in item.source %}#8ab4f8{% else %}#ffd166{% endif %};">
+                    <i class="{% if 'Google' in item.source %}fab fa-google{% else %}fab fa-wikipedia-w{% endif %}"></i>
+                    {{ item.source }}
+                </span>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="padding: 20px; text-align: center; color: #888;">No claims extracted for verification.</div>
+        {% endif %}
     </div>
 
     <div class="section-title">
         <i class="fas fa-tags" style="color: #ff4f85;"></i>
         <h2>Identified Entities</h2>
     </div>
-    <div class="badge-container">
+    <div class="badge-container" style="margin-bottom: 40px;">
         {% if entities %}
             {% for ent, label in entities %}
                 <span class="entity-badge">{{ ent }} <small style="opacity: 0.7;">({{ label }})</small></span>
             {% endfor %}
         {% else %}
-            <p style="color: #888;">No major entities detected.</p>
+            <p style="color: #888;">No entities detected.</p>
         {% endif %}
     </div>
 
@@ -88,26 +95,27 @@
         <h2>Admin Dashboard</h2>
     </div>
 
-    <div class="admin-grid">
+    <div class="admin-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px;">
         <div class="card">
             <h3><i class="fas fa-server"></i> System Status</h3>
-            <p>Main Server: <span class="status-true">ONLINE</span></p>
-            <p>ML Model: <span class="status-true">READY</span></p>
+            <p style="font-size: 0.9rem;">Main Server: <span class="status-true" style="color: #4cff88; font-weight: bold;">ONLINE</span></p>
+            <p style="font-size: 0.9rem;">ML Model: <span class="status-true" style="color: #4cff88; font-weight: bold;">READY</span></p>
         </div>
         <div class="card">
             <h3><i class="fas fa-chart-line"></i> Live Metrics</h3>
-            <p>Analyzed: <strong>{{ metrics.analyzed }}</strong></p>
-            <p>Distribution: <strong>{{ metrics.distribution }}</strong></p>
-            <p>Session: <strong>{{ metrics.session }}</strong></p>
+            <p style="font-size: 0.9rem;">Analyzed: <strong>{{ metrics.analyzed }}</strong></p>
+            <p style="font-size: 0.9rem;">Distribution: <strong>{{ metrics.distribution }}</strong></p>
+            <p style="font-size: 0.9rem;">Session: <strong>{{ metrics.session }}</strong></p>
         </div>
         <div class="card">
             <h3><i class="fas fa-code-branch"></i> Deployment</h3>
-            <p>Env: {{ deployment.status }}</p>
-            <p>Model: {{ deployment.provider }}</p>
+            <p style="font-size: 0.9rem;">Env: {{ deployment.status }}</p>
+            <p style="font-size: 0.9rem;">Model: {{ deployment.provider }}</p>
         </div>
     </div>
 
     {% endif %}
 </div>
+
 </body>
 </html>
