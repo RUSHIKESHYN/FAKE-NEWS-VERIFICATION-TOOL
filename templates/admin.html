@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Admin Dashboard</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+<style>
+
+.dashboard-grid{
+display:grid;
+grid-template-columns:1fr 1fr 1fr;
+gap:25px;
+margin-top:40px;
+}
+
+.panel{
+background:white;
+color:#333;
+padding:20px;
+border-radius:12px;
+box-shadow:0 5px 15px rgba(0,0,0,0.15);
+}
+
+.panel-title{
+background:#1976d2;
+color:white;
+padding:10px;
+border-radius:6px;
+margin-bottom:15px;
+font-weight:bold;
+}
+
+.metric{
+font-size:22px;
+font-weight:bold;
+}
+
+.active{color:green;font-weight:bold;}
+.inactive{color:red;font-weight:bold;}
+
+.status{
+background:#e8f5e9;
+padding:5px 10px;
+border-radius:6px;
+font-weight:bold;
+color:green;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Admin Dashboard</h1>
+
+<div class="dashboard-grid">
+
+<!-- Trusted Sources -->
+<div class="panel">
+
+<div class="panel-title">Trusted Sources</div>
+
+{% for s in sources %}
+
+<p>
+{{ s.name }}
+
+{% if s.status == "Active" %}
+<span class="active">● Active</span>
+{% else %}
+<span class="inactive">● Inactive</span>
+{% endif %}
+
+</p>
+
+{% endfor %}
+
+</div>
+
+
+<!-- System Metrics -->
+<div class="panel">
+
+<div class="panel-title">System Metrics</div>
+
+<p>
+<span class="metric">{{ metrics.articles_analyzed }}</span><br>
+Articles Analyzed
+</p>
+
+<p>
+<span class="metric">{{ metrics.accuracy }}</span><br>
+Classification Accuracy
+</p>
+
+<p>
+<span class="metric">{{ metrics.active_users }}</span><br>
+Active Users
+</p>
+
+<p>
+<span class="metric">{{ metrics.uptime }}</span><br>
+System Uptime
+</p>
+
+</div>
+
+
+<!-- Deployment Status -->
+<div class="panel">
+
+<div class="panel-title">Deployment Status</div>
+
+<p>
+Application Status:
+<span class="status">{{ deployment.status }}</span>
+</p>
+
+<p>Model Size: {{ deployment.model_size }}</p>
+
+<p>Average Response Time: {{ deployment.response_time }}</p>
+
+<p>Last Updated: {{ deployment.last_updated }}</p>
+
+<br>
+
+<p><b>Deployment Platforms</b></p>
+
+<p>Hugging Face Spaces ● Live</p>
+
+<p>Streamlit Cloud ● Live</p>
+
+</div>
+
+</div>
+
+</div>
+
+</body>
+
+</html>
