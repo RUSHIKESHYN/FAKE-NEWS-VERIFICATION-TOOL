@@ -10,6 +10,11 @@ import time
 import re
 import wikipediaapi
 import urllib.parse  
+# Added this to help read the secret file
+from dotenv import load_dotenv 
+
+# Load the variables from the .env file
+load_dotenv()
 
 # Ensure NLTK is ready
 try:
@@ -20,8 +25,8 @@ except LookupError:
 app = Flask(__name__)
 
 # --- API CONFIGURATION ---
-# Replace with your actual Google Cloud API Key
-GOOGLE_API_KEY = "AIzaSyDwgIr_e5Qqz2eekzmOCmLrVaEQejMUoVQ"
+# Now it grabs the key safely from your environment
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 wiki = wikipediaapi.Wikipedia(user_agent="FactChecker/1.0", language='en')
 
 # --- SYSTEM METRICS ---
@@ -52,20 +57,25 @@ def detect_suspicious(text):
 
 def get_google_fact_check(claim):
     """Queries Google Fact Check Tools API with Wikipedia fallback"""
+    if not GOOGLE_API_KEY:
+        return get_wiki_verification(claim)
+
     try:
-        query = urllib.parse.quote(claim)
-        url = f"https://factchecktools.googleapis.com/v1alpha1/claims:search?query={query}&key={AIzaSyDwgIr_e5Qqz2eekzmOCmLrVaEQejMUoVQ}"
+        # Optimization: Use first 10 words for better matching
+        search_query = " ".join(claim.split()[:10])
+        query = urllib.parse.quote(search_query)
+        
+        url = f"https://factchecktools.googleapis.com/v1alpha1/claims:search?query={query}&key={GOOGLE_API_KEY}"
         response = requests.get(url)
         data = response.json()
 
-        if "claims" in data:
+        if "claims" in data and len(data["claims"]) > 0:
             first_claim = data["claims"][0]
             review = first_claim["claimReview"][0]
             publisher = review["publisher"]["name"]
             rating = review["textualRating"]
             return f"Google Check: {rating} (via {publisher})"
         
-        # Fallback to Wikipedia if Google has no results
         return get_wiki_verification(claim)
     except:
         return get_wiki_verification(claim)
@@ -117,7 +127,6 @@ def index():
             else: real_count += 1
             data["highlighted_text"], data["explanation_points"] = detect_suspicious(text)
             
-        
             sentences = sent_tokenize(text)
             for sent in sentences[:4]:
                 data["claims_data"].append({
@@ -132,4 +141,5 @@ def index():
     return render_template("index.html", **data, metrics=metrics_summary, deployment={"status": "Active (Local)", "provider": "Flask Dev Server"})
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # If running in Docker, we need 0.0.0.0
+    app.run(host='0.0.0.0', port=5000, debug=True)

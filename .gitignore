@@ -1,12 +1,19 @@
- # Virtual environment
+.env
 venv/
-
-# Python cache
+env/
+ENV/
 __pycache__/
 *.pyc
-
-# Database
-*.db
-
-# Environment variables
-.env
+*.pyo
+*.pyd
+.Python
+/models/
+.vscode/
+.idea/
+*.swp
+*.swo
+.dockerignore
+nltk_data/
+.DS_Store
+Thumbs.db
+*.log
