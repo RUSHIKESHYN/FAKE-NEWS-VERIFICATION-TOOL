@@ -8,8 +8,15 @@ from nltk.tokenize import sent_tokenize
 import os
 import time
 import re
+import wikipediaapi
+
+# Download NLTK data for sentence splitting
+nltk.download('punkt')
 
 app = Flask(__name__)
+
+# Wikipedia API Setup (User-Agent is required)
+wiki = wikipediaapi.Wikipedia(user_agent="FakeNewsVerificationBot/1.0", language='en')
 
 # --- SYSTEM METRICS ---
 articles_analyzed = 0
@@ -32,10 +39,22 @@ def detect_suspicious(text):
     for phrase, explanation in suspicious_patterns.items():
         if phrase.lower() in text.lower():
             pattern = re.compile(re.escape(phrase), re.IGNORECASE)
-            highlighted = pattern.sub(f'<span class="suspicious-highlight">{phrase}</span>', highlighted)
+            # Use 'suspicious' class to match your CSS animation
+            highlighted = pattern.sub(f'<span class="suspicious">{phrase}</span>', highlighted)
             if explanation not in explanations:
                 explanations.append(explanation)
     return highlighted, explanations
+
+def get_wiki_verification(claim):
+    try:
+        # Search for the first 3-4 words of the claim for better matching
+        search_query = " ".join(claim.split()[:5])
+        page = wiki.page(search_query)
+        if page.exists():
+            return f"Wikipedia: {page.title} (Verified Source)"
+        return "No specific match found in archives."
+    except:
+        return "Verification service temporarily unavailable."
 
 # NLP / Model Setup
 try:
@@ -54,35 +73,24 @@ def classify_text(text):
         outputs = model(**inputs)
     probs = torch.nn.functional.softmax(outputs.logits, dim=1)
     confidence = torch.max(probs).item()
-    
-    # Mapping logic: ensure we handle both Label IDs and Strings
     idx = torch.argmax(probs).item()
     label = model.config.id2label[idx].upper() 
-    
-    # Standardize label names if the model uses LABEL_0/LABEL_1
     if "0" in label or "FAKE" in label:
         label = "FAKE"
     else:
         label = "REAL"
-        
     return label, round(confidence * 100, 2)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     global articles_analyzed, fake_count, real_count
     
-    # 1. Initialize data dictionary
     data = {
-        "prediction": None, 
-        "confidence": None, 
-        "claims_data": [], 
-        "entities": [], 
-        "highlighted_text": None, 
-        "explanation_points": [], 
+        "prediction": None, "confidence": None, "claims_data": [], 
+        "entities": [], "highlighted_text": None, "explanation_points": [], 
         "original_text": None
     }
 
-    # 2. Logic for Form Submission
     if request.method == "POST":
         text = request.form.get("news_text")
         if text and text.strip():
@@ -90,37 +98,27 @@ def index():
             data["prediction"], data["confidence"] = classify_text(text)
             
             articles_analyzed += 1
-            if data["prediction"] == "FAKE": 
-                fake_count += 1
-            else: 
-                real_count += 1
+            if data["prediction"] == "FAKE": fake_count += 1
+            else: real_count += 1
                 
             data["highlighted_text"], data["explanation_points"] = detect_suspicious(text)
+            
+            # --- POPULATE CLAIMS DATA ---
+            sentences = sent_tokenize(text)
+            for sent in sentences[:4]: # Limit to 4 for UI cleanliness
+                data["claims_data"].append({
+                    "claim": sent,
+                    "source": get_wiki_verification(sent)
+                })
+
             doc = nlp(text)
             data["entities"] = [(ent.text, ent.label_) for ent in doc.ents]
 
-    # 3. Prepare variables for the template
     uptime = int(time.time() - start_time)
-    
-    metrics_summary = {
-        "analyzed": articles_analyzed,
-        "distribution": f"F:{fake_count} | R:{real_count}",
-        "session": f"{uptime}s"
-    }
-    
-    # FIX: Define the 'deployment' variable that index.html is looking for
-    deployment_info = {
-        "status": "Active (Local)",
-        "provider": "Flask Dev Server"
-    }
+    metrics_summary = {"analyzed": articles_analyzed, "distribution": f"F:{fake_count} | R:{real_count}", "session": f"{uptime}s"}
+    deployment_info = {"status": "Active (Local)", "provider": "Flask Dev Server"}
 
-    # 4. Pass all variables to render_template
-    return render_template(
-        "index.html", 
-        **data, 
-        metrics=metrics_summary, 
-        deployment=deployment_info
-    )
+    return render_template("index.html", **data, metrics=metrics_summary, deployment=deployment_info)
 
 if __name__ == "__main__":
     app.run(debug=True)

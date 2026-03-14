@@ -6,53 +6,6 @@
     <title>Fake News Detection & Verification</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        /* Specific styling to match the dashboard UI */
-        .admin-header {
-            border-left: 4px solid #ff4b81;
-            padding-left: 15px;
-            margin: 40px 0 20px 0;
-            display: flex;
-            align-items: center;
-        }
-        .admin-header h2 {
-            margin: 0;
-            text-transform: uppercase;
-            font-size: 1.1rem;
-            letter-spacing: 1.2px;
-            color: #ffffff;
-        }
-        .admin-header i {
-            margin-right: 10px;
-            color: #ff4b81;
-        }
-        .result-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-        }
-        .card {
-            background: #2a215c;
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .entity-badge {
-            display: inline-block;
-            background: rgba(255, 75, 129, 0.1);
-            border: 1px solid #ff4b81;
-            padding: 5px 12px;
-            border-radius: 20px;
-            margin: 5px;
-            font-size: 0.85rem;
-            color: #ff4b81;
-        }
-        .suspicious-highlight {
-            background-color: rgba(255, 75, 129, 0.3);
-            border-bottom: 2px solid #ff4b81;
-            font-weight: bold;
-        }
-    </style>
 </head>
 <body>
 
@@ -66,10 +19,10 @@
 
     {% if prediction %}
     
-    <div class="result-grid" style="margin-bottom: 30px;">
+    <div class="result-grid">
         <div class="card">
             <h3>Classification</h3>
-            <div class="prediction" style="font-weight: bold; font-size: 1.5rem; color: {% if prediction == 'FAKE' %}#ff4b81{% else %}#4cff88{% endif %};">
+            <div class="prediction {{ prediction }}">
                 {{ prediction }}
             </div>
             <p>Confidence Level: <strong>{{ confidence }}%</strong></p>
@@ -80,65 +33,81 @@
             <div class="cleaned-text">
                 {{ highlighted_text | safe }}
             </div>
-            {% if explanation_points %}
-                <ul style="margin-top:10px; font-size: 0.85rem; color: #ccc;">
-                    {% for point in explanation_points %}
-                        <li>{{ point }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
         </div>
     </div>
 
-    <div class="admin-header">
-        <i class="fas fa-tags"></i>
+    {% if explanation_points %}
+    <div class="explain-box" style="border-left: 5px solid #ff4b81; background: rgba(255, 75, 129, 0.05); padding: 25px; margin: 30px 0;">
+        <h3 style="color: #ff4b81; font-size: 1.3rem; margin-bottom: 20px; border: none; padding: 0;">
+            <i class="fas fa-exclamation-triangle"></i> Why this article is flagged
+        </h3>
+        <ul style="list-style: none; padding: 0;">
+            {% for point in explanation_points %}
+                <li style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px; color: #fff;">
+                    <i class="fas fa-exclamation-triangle" style="color: #ffb44b; margin-top: 4px; font-size: 0.9rem;"></i>
+                    <span>{{ point }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="section-title">
+        <i class="fas fa-check-double" style="color: #ff4f85;"></i>
+        <h2>Fact-Check Verification</h2>
+    </div>
+    <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 30px;">
+        <div style="display: grid; grid-template-columns: 1.5fr 1fr; padding: 15px; border-bottom: 2px solid #ff4f85; font-weight: bold; color: #ff7aa2; background: rgba(0,0,0,0.2); font-size: 0.85rem; text-transform: uppercase;">
+            <span>Extracted Claim</span>
+            <span>Verified Sources (Wikipedia/Google)</span>
+        </div>
+        {% for item in claims_data %}
+        <div class="verification-item" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 0;">
+            <span style="font-size: 0.95rem;">{{ item.claim }}</span>
+            <span class="status-unverified" style="font-size: 0.8rem; text-align: center;">{{ item.source }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="section-title">
+        <i class="fas fa-tags" style="color: #ff4f85;"></i>
         <h2>Identified Entities</h2>
     </div>
     <div class="badge-container">
         {% if entities %}
             {% for ent, label in entities %}
-                <span class="entity-badge">
-                    {{ ent }} <small style="opacity: 0.7;">({{ label }})</small>
-                </span>
+                <span class="entity-badge">{{ ent }} <small style="opacity: 0.7;">({{ label }})</small></span>
             {% endfor %}
         {% else %}
             <p style="color: #888;">No major entities detected.</p>
         {% endif %}
     </div>
 
-    <div class="admin-header">
-        <i class="fas fa-tools"></i>
+    <div class="section-title">
+        <i class="fas fa-tools" style="color: #ff4f85;"></i>
         <h2>Admin Dashboard</h2>
     </div>
 
-    <div class="result-grid">
+    <div class="admin-grid">
         <div class="card">
             <h3><i class="fas fa-server"></i> System Status</h3>
-            <p style="font-size: 0.9rem; margin-bottom: 5px;">
-                Main Server: <span style="color: #4cff88;">ONLINE</span>
-            </p>
-            <p style="font-size: 0.9rem; margin-bottom: 5px;">
-                ML Model: <span style="color: #4cff88;">READY</span>
-            </p>
+            <p>Main Server: <span class="status-true">ONLINE</span></p>
+            <p>ML Model: <span class="status-true">READY</span></p>
         </div>
-
         <div class="card">
             <h3><i class="fas fa-chart-line"></i> Live Metrics</h3>
-            <p style="font-size: 0.9rem;">Analyzed: <strong>{{ metrics.analyzed }}</strong></p>
-            <p style="font-size: 0.9rem;">Distribution: <strong>{{ metrics.distribution }}</strong></p>
-            <p style="font-size: 0.9rem;">Session: <strong>{{ metrics.session }}</strong></p>
+            <p>Analyzed: <strong>{{ metrics.analyzed }}</strong></p>
+            <p>Distribution: <strong>{{ metrics.distribution }}</strong></p>
+            <p>Session: <strong>{{ metrics.session }}</strong></p>
         </div>
-
         <div class="card">
             <h3><i class="fas fa-code-branch"></i> Deployment</h3>
-            <p style="font-size: 0.9rem;">Env: {{ deployment.status | default('Local') }}</p>
-            <p style="font-size: 0.9rem;">Model: {{ deployment.provider | default('HuggingFace') }}</p>
-            <p style="font-size: 0.9rem;">CPU/GPU: PyTorch v{{ torch_version | default('2.0+') }}</p>
+            <p>Env: {{ deployment.status }}</p>
+            <p>Model: {{ deployment.provider }}</p>
         </div>
     </div>
 
     {% endif %}
 </div>
-
 </body>
 </html>

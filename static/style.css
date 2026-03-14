@@ -1,9 +1,5 @@
 /* Reset & Base */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
     font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -24,81 +20,37 @@ body {
     box-shadow: 0 10px 40px rgba(0,0,0,0.6);
 }
 
-/* Headings */
-h1 {
-    text-align: center;
-    margin-bottom: 25px;
-    color: #ff7aa2;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-}
+h1 { text-align: center; margin-bottom: 25px; color: #ff7aa2; text-transform: uppercase; letter-spacing: 2px; }
 
-h2 {
-    margin-top: 35px;
-    margin-bottom: 20px;
-    border-left: 5px solid #ff7aa2;
-    padding-left: 15px;
-    font-size: 1.5rem;
-}
-
-/* NEW: Admin Dashboard Section Header */
 .section-title {
     margin-top: 45px;
     margin-bottom: 20px;
-    border-left: 5px solid #ff4f85; /* Specific pink accent */
+    border-left: 5px solid #ff4f85;
     padding-left: 15px;
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
-.section-title h2 {
-    margin: 0; /* Override default h2 margins for this section */
-    border-left: none; /* Remove duplicate border */
-    padding-left: 0;
-    font-size: 1.2rem;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-}
+.section-title h2 { font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1.5px; margin: 0; }
 
-/* Input Area */
 textarea {
-    width: 100%;
-    height: 150px;
-    padding: 15px;
-    border-radius: 10px;
-    border: 2px solid #3c2a6e;
-    background-color: #1a0b2e;
-    color: white;
-    font-size: 16px;
-    margin-bottom: 15px;
-    outline: none;
-    transition: border-color 0.3s;
+    width: 100%; height: 150px; padding: 15px; border-radius: 10px;
+    border: 2px solid #3c2a6e; background-color: #1a0b2e;
+    color: white; font-size: 16px; margin-bottom: 15px; outline: none;
 }
 
-textarea:focus {
-    border-color: #ff7aa2;
-}
+textarea:focus { border-color: #ff7aa2; }
 
 button {
-    background-color: #ff7aa2;
-    color: #000;
-    padding: 12px 25px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 1rem;
-    transition: all 0.3s ease;
+    background-color: #ff7aa2; color: #000; padding: 12px 25px;
+    border-radius: 8px; border: none; cursor: pointer;
+    font-weight: bold; font-size: 1rem; transition: all 0.3s ease;
 }
 
-button:hover {
-    background-color: #ff4f85;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(255, 122, 162, 0.4);
-}
+button:hover { background-color: #ff4f85; transform: translateY(-2px); }
 
-/* The Magic: Suspicious Highlights */
+/* The Pulse Animation for Suspicious Phrases */
 .suspicious {
     background-color: rgba(255, 79, 79, 0.25);
     border-bottom: 2px solid #ff4f4f;
@@ -106,7 +58,6 @@ button:hover {
     font-weight: bold;
     padding: 0 2px;
     border-radius: 3px;
-    cursor: help;
     animation: pulse 2s infinite;
 }
 
@@ -116,124 +67,28 @@ button:hover {
     100% { background-color: rgba(255, 79, 79, 0.2); }
 }
 
-/* Dashboard Cards Grid */
-.result-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
-    margin-top: 25px;
-}
-
-/* Forced 3-column grid for Admin Dashboard to match screenshot */
-.admin-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-}
+.result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 25px; }
+.admin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 
 .card {
-    background-color: #3c2a6e;
-    padding: 20px;
-    border-radius: 15px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    background-color: #3c2a6e; padding: 20px; border-radius: 15px;
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* Classification Results */
-.prediction {
-    font-size: 28px;
-    font-weight: 900;
-    margin: 10px 0;
-}
+.prediction.FAKE { color: #ff4f4f; font-size: 2rem; font-weight: 900; }
+.prediction.REAL { color: #4cff88; font-size: 2rem; font-weight: 900; }
 
-.prediction.REAL, .prediction.PASS { color: #4cff88; }
-.prediction.FAKE, .prediction.FAIL { color: #ff4f4f; }
+.explain-box { background-color: #1a0b2e; border-left: 5px solid #ff4f4f; padding: 20px; border-radius: 0 10px 10px 0; }
+.explain-box ul { list-style: none; padding-left: 0; }
+.explain-box li { margin-bottom: 12px; padding-left: 30px; position: relative; }
+.explain-box li::before { content: "⚠️"; position: absolute; left: 0; }
 
-.cleaned-text {
-    line-height: 1.8;
-    font-size: 1rem;
-    color: #e0e0e0;
-}
+.verification-item { padding: 15px; transition: background 0.2s; }
+.verification-item:hover { background: rgba(255, 255, 255, 0.03); }
 
-/* Verification Table & Items */
-.verification-item {
-    background: rgba(0, 0, 0, 0.2);
-    padding: 12px;
-    border-radius: 8px;
-    border-left: 3px solid #00d4ff;
-    margin-bottom: 10px;
-    transition: transform 0.2s ease, background 0.2s;
-}
+.status-unverified { color: #ffd166; background: rgba(255, 209, 102, 0.1); padding: 4px 10px; border-radius: 12px; }
 
-.verification-item:hover {
-    transform: translateX(5px);
-    background: rgba(0, 0, 0, 0.3);
-}
+.badge-container { display: flex; flex-wrap: wrap; gap: 10px; }
+.entity-badge { background: rgba(255, 122, 162, 0.1); color: #ff7aa2; border: 1px solid #ff7aa2; padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; }
 
-.status-unverified {
-    color: #ffd166;
-    background: rgba(255, 209, 102, 0.1);
-    padding: 2px 8px;
-    border-radius: 10px;
-}
-
-/* Explainability Box */
-.explain-box {
-    background-color: #1a0b2e;
-    border-left: 5px solid #ff4f4f;
-    padding: 15px;
-    border-radius: 0 10px 10px 0;
-}
-
-.explain-box ul {
-    list-style: none;
-    padding-left: 0;
-}
-
-.explain-box li {
-    margin-bottom: 12px;
-    padding-left: 30px;
-    position: relative;
-    font-size: 0.95rem;
-}
-
-.explain-box li::before {
-    content: "⚠️";
-    position: absolute;
-    left: 0;
-    font-size: 1rem;
-}
-
-/* Entity Badges */
-.badge-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.entity-badge {
-    background: rgba(255, 122, 162, 0.1);
-    color: #ff7aa2;
-    border: 1px solid #ff7aa2;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    transition: background 0.3s;
-}
-
-.entity-badge:hover {
-    background: rgba(255, 122, 162, 0.2);
-}
-
-/* Admin Dashboard Metrics */
-.status-true {
-    color: #4cff88;
-    font-weight: bold;
-}
-
-/* Responsive */
-@media (max-width: 900px) {
-    .admin-grid {
-        grid-template-columns: 1fr;
-    }
-}
+.status-true { color: #4cff88; font-weight: bold; }
